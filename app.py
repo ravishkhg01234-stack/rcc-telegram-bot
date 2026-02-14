@@ -1,7 +1,8 @@
 from flask import Flask, request
 import requests
 
-TOKEN = "YOUR_NEW_TELEGRAM_TOKEN"
+TOKEN = "8319486236:AAHJumCWH1POvxpGji9Laa4Gs-W2DtgxbM0"
+
 
 app = Flask(__name__)
 
