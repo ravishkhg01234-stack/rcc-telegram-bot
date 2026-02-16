@@ -6,7 +6,7 @@ import math
 # =========================
 # CONFIG
 # =========================
-TOKEN = os.environ.get("TOKEN")
+TOKEN = "8510228134:AAEKA1rF81bAsK6YbkG2TEJe5WsLXALJNo4"
 app = Flask(__name__)
 
 user_data = {}
@@ -15,7 +15,7 @@ user_data = {}
 # TELEGRAM SEND FUNCTION
 # =========================
 def send_message(chat_id, text):
-    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+    url = f"https://api.telegram.org/bot{8510228134:AAEKA1rF81bAsK6YbkG2TEJe5WsLXALJNo4}/sendMessage"
     payload = {
         "chat_id": chat_id,
         "text": text
