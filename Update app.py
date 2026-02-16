@@ -1,81 +1,94 @@
-from flask import Flask, request
-import requests
 import os
 import math
+from flask import Flask, request
+from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler
 
-# =========================
-# CONFIG
-# =========================
-TOKEN = "8510228134:AAEKA1rF81bAsK6YbkG2TEJe5WsLXALJNo4"
+TOKEN = os.environ.get("TOKEN")
+
 app = Flask(__name__)
 
-user_data = {}
+CHOOSING, ANALYZING_SINGLY, ANALYZING_DOUBLY, DESIGNING_SINGLY = range(4)
 
-# =========================
-# TELEGRAM SEND FUNCTION
-# =========================
-def send_message(chat_id, text):
-    url = f"https://api.telegram.org/bot{8510228134:AAEKA1rF81bAsK6YbkG2TEJe5WsLXALJNo4}/sendMessage"
-    payload = {
-        "chat_id": chat_id,
-        "text": text
-    }
-    requests.post(url, json=payload)
+# ---------------- RCC FUNCTIONS ----------------
 
-# =========================
-# RCC FUNCTION (Example)
-# =========================
-def analyze_singly(b, d, Ast, fck, fy):
+def analyze_singly_reinforced(b, d, Ast, fck, fy):
     xu = (0.87 * fy * Ast) / (0.36 * fck * b)
-    Mu = 0.87 * fy * Ast * d * (1 - (Ast * fy)/(b * d * fck))
-    return round(xu,2), round(Mu/10**6,2)
 
-# =========================
-# WEBHOOK
-# =========================
-@app.route("/webhook", methods=["POST"])
-def webhook():
-    data = request.get_json()
+    if fy == 250: km = 0.53
+    elif fy == 415: km = 0.48
+    else: km = 0.46
+    xu_max = km * d
 
-    if "message" not in data:
-        return "ok"
-
-    chat_id = data["message"]["chat"]["id"]
-    text = data["message"].get("text","")
-
-    if text == "/start":
-        send_message(chat_id, "RCC AI Bot Online 🚀\nSend: b,d,Ast,fck,fy")
-
+    if xu <= xu_max:
+        section = "Under-Reinforced"
+        term = (Ast * fy) / (b * d * fck)
+        Mu = 0.87 * fy * Ast * d * (1 - term)
     else:
-        try:
-            params = [float(x.strip()) for x in text.split(",")]
-            if len(params) != 5:
-                raise ValueError
+        section = "Over-Reinforced"
+        Mu = 0.36 * fck * b * xu_max * (d - 0.42 * xu_max)
 
-            xu, Mu = analyze_singly(*params)
+    return section, round(xu, 2), round(Mu / 10**6, 2)
 
-            result = f"""
-Results:
-xu = {xu} mm
-Mu = {Mu} kNm
-"""
-            send_message(chat_id, result)
+# ---------------- BOT HANDLERS ----------------
 
-        except:
-            send_message(chat_id, "Use format:\n230,450,942,20,415")
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = [["Analyze Singly Beam"]]
+    await update.message.reply_text(
+        "RCC Bot Online\nSelect:",
+        reply_markup=ReplyKeyboardMarkup(keyboard, one_time_keyboard=True),
+    )
+    return CHOOSING
 
+async def ask_analyze_singly(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "Enter: b, d, Ast, fck, fy\nExample:\n230, 450, 942, 20, 415",
+        reply_markup=ReplyKeyboardRemove(),
+    )
+    return ANALYZING_SINGLY
+
+async def perform_analyze_singly(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        params = [float(x.strip()) for x in update.message.text.split(",")]
+        section, xu, Mu = analyze_singly_reinforced(*params)
+        await update.message.reply_text(
+            f"Type: {section}\nxu: {xu} mm\nMu: {Mu} kNm"
+        )
+    except:
+        await update.message.reply_text("Format error.")
+    return ConversationHandler.END
+
+# ---------------- APPLICATION SETUP ----------------
+
+application = Application.builder().token(TOKEN).build()
+
+conv_handler = ConversationHandler(
+    entry_points=[CommandHandler("start", start)],
+    states={
+        CHOOSING: [
+            MessageHandler(filters.Regex("^Analyze Singly Beam$"), ask_analyze_singly),
+        ],
+        ANALYZING_SINGLY: [
+            MessageHandler(filters.TEXT & ~filters.COMMAND, perform_analyze_singly)
+        ],
+    },
+    fallbacks=[],
+)
+
+application.add_handler(conv_handler)
+
+# ---------------- WEBHOOK ROUTE ----------------
+
+@app.route("/webhook", methods=["POST"])
+async def webhook():
+    update = Update.de_json(request.get_json(force=True), application.bot)
+    await application.process_update(update)
     return "ok"
 
-# =========================
-# HOME ROUTE
-# =========================
 @app.route("/")
 def home():
-    return "RCC Bot Running!"
+    return "RCC Bot Running"
 
-# =========================
-# RUN
-# =========================
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
