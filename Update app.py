@@ -4,7 +4,7 @@ from flask import Flask, request
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler
 
-TOKEN = os.environ.get("TOKEN")
+TOKEN = "8510228134:AAEKA1rF81bAsK6YbkG2TEJe5WsLXALJNo4"
 
 app = Flask(__name__)
 
@@ -90,5 +90,5 @@ def home():
     return "RCC Bot Running"
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
+    port = int(8510228134:AAEKA1rF81bAsK6YbkG2TEJe5WsLXALJNo4("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
